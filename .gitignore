@@ -1,0 +1,8 @@
+images
+digits
+images.json
+logs
+examples
+challenges
+*.pyc
+models
