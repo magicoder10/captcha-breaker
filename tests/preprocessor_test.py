@@ -1,11 +1,9 @@
-import json
-
 import cv2
 from PIL import Image
 
 from captcha.preprocessor import get_digits
 
-image_names = [25]
+image_names = [25, 32, 63]
 examples = []
 
 for i in range(len(image_names)):
