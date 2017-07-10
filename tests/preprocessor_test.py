@@ -3,7 +3,7 @@ from PIL import Image
 
 from captcha.preprocessor import get_digits
 
-image_names = [25, 32, 63]
+image_names = [22, 25, 32, 63, 206, 246, 264, 178]
 examples = []
 
 for i in range(len(image_names)):

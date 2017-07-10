@@ -86,16 +86,16 @@ def get_digits(image):
 
     if len(character_contours_info) > 3:
         first_character = crop_character(closing, character_contours_info, 0)
-        first_character = resize(100, 100, first_character)
+        first_character = resize(50, 50, first_character)
 
         second_character = crop_character(closing, character_contours_info, 1)
-        second_character = resize(100, 100, second_character)
+        second_character = resize(50, 50, second_character)
 
         third_character = crop_character(closing, character_contours_info, 2)
-        third_character = resize(100, 100, third_character)
+        third_character = resize(50, 50, third_character)
 
         fourth_character = crop_character(closing, character_contours_info, 3)
-        fourth_character = resize(100, 100, fourth_character)
+        fourth_character = resize(50, 50, fourth_character)
 
         return first_character, second_character, third_character, fourth_character
 
