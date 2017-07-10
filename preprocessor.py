@@ -10,31 +10,28 @@ def show_contour(white_image, contour):
 def get_rect_info(contour):
     x, y, w, h = cv2.boundingRect(contour)
     area = cv2.contourArea(contour)
-    return {'counter': contour, 'left': x, 'width': w, 'area': area}
+    return {'contour': contour, 'left': x, 'top': y, 'width': w, 'height': h, 'area': area}
 
 
-def get_character_contours_info(contours, num_digits, min_area):
+def get_character_contours_info(contours, min_area):
     contours_info = [get_rect_info(contour) for contour in contours]
+
+    contours_info = [contour_info for contour_info in contours_info if min_area < contour_info['area']]
     contours_info.sort(key=lambda contour_info: contour_info['left'])
 
-    contours_info = [contour_info for contour_info in contours_info if contour_info['area'] > min_area]
     non_overlapping_contours = []
-    size = len(contours_info)
+    last_contour_info = None
     min_left = 0
     for i in range(len(contours_info)):
         contour_info = contours_info[i]
-        if contour_info['left'] > min_left:
+        if contour_info['left'] > min_left + 3:
             non_overlapping_contours.append(contour_info)
             min_left = contour_info['left'] + contour_info['width']
-        elif contour_info['left'] == min_left and contour_info['area'] > min_area + 5 and len(
-                non_overlapping_contours) + size > num_digits:
-            last_contour_info = non_overlapping_contours.pop()
-            last_contour_info['width'] += contour_info['width']
-            last_contour_info['area'] += contour_info['area']
-            non_overlapping_contours.append(last_contour_info)
-            min_left = contour_info['left'] + contour_info['width']
-        size -= 1
-
+            last_contour_info = contour_info
+        elif last_contour_info is not None and (contour_info['left'] < last_contour_info['left']
+                                                or contour_info['top'] < last_contour_info['top']
+                                                or contour_info['area'] > last_contour_info['area']):
+            return []
     return non_overlapping_contours
 
 
@@ -43,8 +40,11 @@ def crop(image, left, width, top, height):
 
 
 def crop_character(image, character_contours_info, index):
-    return image[0: image.shape[0], character_contours_info[index]['left']:character_contours_info[index]['left'] +
-                                                                           character_contours_info[index]['width']]
+    top = character_contours_info[index]['top'] - 2
+    bottom = character_contours_info[index]['top'] + character_contours_info[index]['height'] + 2
+    left = character_contours_info[index]['left'] - 2
+    right = character_contours_info[index]['left'] + character_contours_info[index]['width'] + 2
+    return image[top: bottom, left: right]
 
 
 def resize(width, height, image):
@@ -56,7 +56,25 @@ def resize(width, height, image):
     return black_image
 
 
-def get_digits(image):
+def remove_bg(image):
+    open_cv_image = np.array(image)
+    grey_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
+    grey_image[grey_image <= 200] = 0
+    grey_image[grey_image > 200] = 255
+    return grey_image
+
+
+def remove_lines(image):
+    kernel = np.ones((2, 2), np.uint8)
+    erosion = cv2.erode(image, kernel, iterations=1)
+    return cv2.morphologyEx(erosion, cv2.MORPH_CLOSE, kernel)
+
+
+def clean_up(image):
+    return remove_lines(remove_bg(image))
+
+
+def get_characters(image):
     open_cv_image = np.array(image)
     grey_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
     grey_image[grey_image <= 200] = 0
@@ -69,33 +87,35 @@ def get_digits(image):
     ret, thresh = cv2.threshold(closing, 200, 255, 0)
     im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    character_contours_info = get_character_contours_info(contours, 4, 18)
+    character_contours_info = get_character_contours_info(contours, 11)
 
-    # infos = [(info['left'], info['width'], info['area']) for info in character_contours_info]
-    # print(infos)
-    # print(len(character_contours_info))
+    max_area = 155
+    example_width = 40
+    example_height = 40
 
-    # white_image = np.zeros([50, 100, 3], dtype=np.uint8)
-    # white_image.fill(255)
-    #
-    # for contour in contours[5:6]:
-    #     show_contour(white_image, contour)
-    # cv2.imshow('image', white_image)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    has_combined_chars = len(
+        [contour_info for contour_info in character_contours_info if contour_info['area'] > max_area]) > 0
 
-    if len(character_contours_info) > 3:
+    infos = []
+    for contour_info in character_contours_info:
+        right = contour_info['left'] + contour_info['width'] + 2
+        bottom = contour_info['top'] + contour_info['height'] + 4
+        if contour_info['left'] > 2 and right < 100 and contour_info['top'] > 4 and bottom < 50:
+            infos.append(contour_info)
+
+    if len(character_contours_info) == 4 and len(infos) == 4 and not has_combined_chars:
+
         first_character = crop_character(closing, character_contours_info, 0)
-        first_character = resize(50, 50, first_character)
+        first_character = resize(example_width, example_height, first_character)
 
         second_character = crop_character(closing, character_contours_info, 1)
-        second_character = resize(50, 50, second_character)
+        second_character = resize(example_width, example_height, second_character)
 
         third_character = crop_character(closing, character_contours_info, 2)
-        third_character = resize(50, 50, third_character)
+        third_character = resize(example_width, example_height, third_character)
 
         fourth_character = crop_character(closing, character_contours_info, 3)
-        fourth_character = resize(50, 50, fourth_character)
+        fourth_character = resize(example_width, example_height, fourth_character)
 
         return first_character, second_character, third_character, fourth_character
 

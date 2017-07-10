@@ -1,6 +1,6 @@
 CAPTCHA Breaker
 
-One Paragraph of project description goes here
+Machine Learning based CAPTCHA Breaker
 
 ## Getting Started
 

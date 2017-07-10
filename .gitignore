@@ -1,6 +1,6 @@
 images
 digits
-images.json
+*.json
 logs
 examples
 challenges
